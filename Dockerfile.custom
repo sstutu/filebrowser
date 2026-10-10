@@ -1,0 +1,38 @@
+FROM node:24-alpine AS frontend-build
+WORKDIR /src/frontend
+RUN corepack enable
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY frontend/ ./
+RUN pnpm run build
+
+FROM golang:1.25-alpine AS backend-build
+WORKDIR /src
+ARG GOPROXY=https://goproxy.cn,direct
+ENV GOPROXY=${GOPROXY}
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+COPY --from=frontend-build /src/frontend/dist ./frontend/dist
+ARG TARGETARCH=amd64
+ARG APP_VERSION=2.63.23-public-links
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build \
+    -trimpath -ldflags="-s -w -X github.com/filebrowser/filebrowser/v2/version.Version=${APP_VERSION}" \
+    -o /out/filebrowser .
+
+# Preserve the upstream s6 runtime and PUID/PGID behavior.
+FROM ghcr.io/linuxserver/baseimage-alpine:3.23
+RUN apk --no-cache add ca-certificates mailcap jq libcap && \
+    mkdir -p /config /database /srv && \
+    chown -R abc:abc /config /database /srv
+COPY --from=backend-build /out/filebrowser /bin/filebrowser
+COPY docker/common/ /
+COPY docker/s6/ /
+# Normalize scripts from Windows checkouts and restore executable bits.
+RUN sed -i 's/\r$//' /healthcheck.sh /custom-cont-init.d/20-config /etc/services.d/filebrowser/run && \
+    chmod 755 /bin/filebrowser /healthcheck.sh /custom-cont-init.d/20-config /etc/services.d/filebrowser/run && \
+    chown -R abc:abc /bin/filebrowser /defaults /healthcheck.sh && \
+    setcap 'cap_net_bind_service=+ep' /bin/filebrowser
+HEALTHCHECK --start-period=10s --interval=30s --timeout=3s CMD /healthcheck.sh
+VOLUME /srv /config /database
+EXPOSE 80

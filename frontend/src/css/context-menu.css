@@ -1,8 +1,8 @@
 .context-menu {
   position: absolute;
   background: var(--surfacePrimary);
-  min-width: 180px;
-  max-width: 220px;
+  min-width: 260px;
+  max-width: 320px;
   border: 1px solid var(--borderSecondary);
   box-shadow: 0 2px 4px var(--borderPrimary);
   z-index: 999;

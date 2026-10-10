@@ -1,7 +1,16 @@
 .venv
+.git
+.github
+.claude
+*.tar.gz
 dist
 .idea
 frontend/node_modules
 frontend/dist
 filebrowser.db
+/srv
+/database
+/config
+.env
+.env.*
 docs/index.md

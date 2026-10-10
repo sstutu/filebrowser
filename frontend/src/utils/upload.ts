@@ -4,6 +4,50 @@ import url from "@/utils/url";
 import { files as api } from "@/api";
 import { removePrefix } from "@/api/utils";
 
+const systemUploadNames = new Set(["desktop.ini", "thumbs.db", ".ds_store"]);
+export function prepareUploadFiles(files: UploadList) {
+  const path = (file: UploadEntry) =>
+    (file.fullPath || file.name).replace(/\\/g, "/").replace(/\/+$/, "");
+  const ignored = files.filter(
+    (file) =>
+      !file.isDir &&
+      systemUploadNames.has(path(file).split("/").pop()!.toLowerCase())
+  );
+  const ignoredSet = new Set(ignored);
+  const skippedParents = new Set<string>();
+  const allParents = new Set<string>();
+  const keptParents = new Set<string>();
+  const ancestors = (value: string, target: Set<string>) => {
+    let index = value.lastIndexOf("/");
+    while (index >= 0) {
+      value = value.slice(0, index);
+      target.add(value);
+      index = value.lastIndexOf("/");
+    }
+  };
+  for (const file of files) {
+    ancestors(path(file), allParents);
+    if (ignoredSet.has(file)) ancestors(path(file), skippedParents);
+    else if (!file.isDir) ancestors(path(file), keptParents);
+  }
+  // Preserve deliberately empty folders; omit only folders emptied by filtering.
+  for (const file of files)
+    if (file.isDir && !allParents.has(path(file))) {
+      keptParents.add(path(file));
+      ancestors(path(file), keptParents);
+    }
+  return {
+    files: files.filter(
+      (file) =>
+        !ignoredSet.has(file) &&
+        (!file.isDir ||
+          !skippedParents.has(path(file)) ||
+          keptParents.has(path(file)))
+    ),
+    skipped: ignored.length,
+  };
+}
+
 /**
  * The path used to detect conflicts against the server's recursive listing.
  *
@@ -131,6 +175,8 @@ export async function checkConflict(
   const conflicts: ConflictingResource[] = [];
   files.forEach((file, index) => {
     if (file.isDir && !includeDirectories) return; // see directory note above
+    if (!includeDirectories && systemUploadNames.has(file.name.toLowerCase()))
+      return;
 
     const server = serverMap.get(conflictKey(file));
     if (!server) return;
@@ -252,7 +298,10 @@ export function handleFiles(
 
   layoutStore.closeHovers();
 
-  for (const file of files) {
+  const prepared = prepareUploadFiles(files);
+  if (prepared.skipped) uploadStore.notifySkipped?.(prepared.skipped);
+
+  for (const file of prepared.files) {
     let path = base;
 
     if (file.fullPath !== undefined) {

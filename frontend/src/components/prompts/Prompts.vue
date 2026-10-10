@@ -24,6 +24,7 @@ import NewFile from "./NewFile.vue";
 import NewDir from "./NewDir.vue";
 import Replace from "./Replace.vue";
 import Share from "./Share.vue";
+import PublicLinks from "./PublicLinks.vue";
 import ShareDelete from "./ShareDelete.vue";
 import Upload from "./Upload.vue";
 import DiscardEditorChanges from "./DiscardEditorChanges.vue";
@@ -46,6 +47,7 @@ const components = new Map<string, any>([
   ["download", Download],
   ["replace", Replace],
   ["share", Share],
+  ["public-links", PublicLinks],
   ["upload", Upload],
   ["share-delete", ShareDelete],
   ["deleteUser", DeleteUser],

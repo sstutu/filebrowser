@@ -11,6 +11,18 @@
       />
 
       <template #actions>
+        <action
+          v-if="canPublicLinks && selectedPublicFiles.length"
+          icon="link"
+          label="复制公网链接和文件名"
+          @action="publicLinks.open(selectedPublicFiles)"
+        />
+        <action
+          v-if="canPublicLinks && publicLinks.recent.length"
+          icon="table_chart"
+          label="本次上传链接表格"
+          @action="publicLinks.open(publicLinks.recent)"
+        />
         <template v-if="!isMobile">
           <action
             v-if="headerButtons.share"
@@ -263,6 +275,20 @@
           @hide="hideContextMenu"
         >
           <action
+            v-if="canPublicLinks && selectedPublicFiles.length"
+            icon="link"
+            label="复制公网链接"
+            :disabled="publicLinks.busy || publicLinks.copying"
+            @action="copyContextPublicLinks('links')"
+          />
+          <action
+            v-if="canPublicLinks && selectedPublicFiles.length"
+            icon="table_chart"
+            label="复制文件名＋链接表格"
+            :disabled="publicLinks.busy || publicLinks.copying"
+            @action="copyContextPublicLinks('table')"
+          />
+          <action
             v-if="headerButtons.share"
             icon="share"
             :label="t('buttons.share')"
@@ -344,6 +370,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useClipboardStore } from "@/stores/clipboard";
 import { useFileStore } from "@/stores/file";
 import { useLayoutStore } from "@/stores/layout";
+import { usePublicLinksStore } from "@/stores/public-links";
 
 import { users, files as api } from "@/api";
 import { enableExec } from "@/utils/constants";
@@ -381,11 +408,41 @@ const isContextMenuVisible = ref<boolean>(false);
 const contextMenuPos = ref<{ x: number; y: number }>({ x: 0, y: 0 });
 
 const $showError = inject<IToastError>("$showError")!;
+const $showSuccess = inject<IToastSuccess>("$showSuccess")!;
 
 const clipboardStore = useClipboardStore();
 const authStore = useAuthStore();
 const fileStore = useFileStore();
 const layoutStore = useLayoutStore();
+const publicLinks = usePublicLinksStore();
+const copyContextPublicLinks = async (mode: "links" | "table") => {
+  hideContextMenu();
+  if (!canPublicLinks.value) return;
+  try {
+    const count = await publicLinks.copyFiles(selectedPublicFiles.value, mode);
+    if (count)
+      $showSuccess(
+        mode === "table"
+          ? `已复制 ${count} 个文件的文件名和链接，可粘贴到 Excel/WPS。`
+          : `已复制 ${count} 个公网链接。`
+      );
+  } catch (error) {
+    $showError(
+      error instanceof Error
+        ? error
+        : new Error("复制失败，请使用 HTTPS 并允许访问剪贴板。")
+    );
+  }
+};
+const canPublicLinks = computed(
+  () => authStore.user?.perm.share && authStore.user.perm.download
+);
+const selectedPublicFiles = computed(() =>
+  fileStore.selected
+    .map((index) => fileStore.req?.items[index])
+    .filter((item) => item)
+    .map((item) => ({ name: item!.name, url: item!.url, isDir: item!.isDir }))
+);
 
 const { req } = storeToRefs(fileStore);
 

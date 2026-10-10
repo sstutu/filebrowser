@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { checkConflict } from "@/utils/upload";
+import { checkConflict, prepareUploadFiles } from "@/utils/upload";
 import { files as api } from "@/api";
 
 vi.mock("@/api", () => ({
@@ -53,6 +53,51 @@ function moveItem(name: string, dest: string, size = 12) {
 }
 
 describe("checkConflict", () => {
+  it("skips OS metadata and folders emptied by filtering, preserving legitimate empty folders", () => {
+    const entries = [
+      { name: "root", fullPath: "root", isDir: true, size: 0 },
+      {
+        name: "Saved Pictures",
+        fullPath: "root/Saved Pictures",
+        isDir: true,
+        size: 0,
+      },
+      {
+        name: "Desktop.INI",
+        fullPath: "root/Saved Pictures/Desktop.INI",
+        isDir: false,
+        size: 1,
+      },
+      { name: "image.png", fullPath: "root/image.png", isDir: false, size: 1 },
+      { name: "empty", fullPath: "root/empty", isDir: true, size: 0 },
+      {
+        name: "config.ini",
+        fullPath: "root/config.ini",
+        isDir: false,
+        size: 1,
+      },
+    ];
+    const result = prepareUploadFiles(entries);
+    expect(result.skipped).toBe(1);
+    expect(result.files.map((file) => file.name)).toEqual([
+      "root",
+      "image.png",
+      "empty",
+      "config.ini",
+    ]);
+  });
+  it("does not skip ordinary hidden files or matching directory names", () => {
+    const result = prepareUploadFiles(
+      ["Thumbs.db", ".DS_Store", ".gitignore", "desktop.ini.png"].map(
+        (name) => ({ name, size: 1, isDir: false })
+      )
+    );
+    expect(result.skipped).toBe(2);
+    expect(result.files.map((file) => file.name)).toEqual([
+      ".gitignore",
+      "desktop.ini.png",
+    ]);
+  });
   beforeEach(() => {
     vi.clearAllMocks();
   });

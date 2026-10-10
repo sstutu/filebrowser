@@ -4,6 +4,8 @@ import { files as api } from "@/api";
 import buttons from "@/utils/buttons";
 import { computed, inject, markRaw, ref } from "vue";
 import * as tus from "@/api/tus";
+import { usePublicLinksStore, type PublicLinkFile } from "./public-links";
+import { useAuthStore } from "./auth";
 
 // TODO: make this into a user setting
 const UPLOADS_LIMIT = 5;
@@ -16,6 +18,11 @@ const beforeUnload = (event: Event) => {
 
 export const useUploadStore = defineStore("upload", () => {
   const $showError = inject<IToastError>("$showError")!;
+  const $showSuccess = inject<IToastSuccess>("$showSuccess");
+  const notifySkipped = (count: number) =>
+    $showSuccess?.(
+      `已跳过 ${count} 个系统文件（desktop.ini / Thumbs.db / .DS_Store），正常文件继续上传。`
+    );
 
   let progressInterval: number | null = null;
 
@@ -28,6 +35,7 @@ export const useUploadStore = defineStore("upload", () => {
   const lastUpload = ref<number>(-1);
   const totalBytes = ref<number>(0);
   const sentBytes = ref<number>(0);
+  let completedFiles: PublicLinkFile[] = [];
 
   //
   // ACTIONS
@@ -98,8 +106,16 @@ export const useUploadStore = defineStore("upload", () => {
       const fileStore = useFileStore();
       window.removeEventListener("beforeunload", beforeUnload);
       buttons.success("upload");
+      const completed = completedFiles;
+      completedFiles = [];
       reset();
       fileStore.reload = true;
+      if (completed.length) {
+        const links = usePublicLinksStore();
+        links.recent = completed;
+        const user = useAuthStore().user;
+        if (user?.perm.share && user.perm.download) links.open(completed);
+      }
     }
 
     if (isActiveUploadsOnLimit() && hasPendingUploads()) {
@@ -145,6 +161,9 @@ export const useUploadStore = defineStore("upload", () => {
   };
 
   const finishUpload = (upload: Upload, succeeded: boolean) => {
+    if (succeeded && upload.type !== "dir") {
+      completedFiles.push({ name: upload.name, url: upload.path });
+    }
     if (succeeded) {
       sentBytes.value += upload.totalBytes - upload.sentBytes;
       upload.sentBytes = upload.totalBytes;
@@ -190,6 +209,7 @@ export const useUploadStore = defineStore("upload", () => {
 
     // ACTIONS
     upload,
+    notifySkipped,
     abort,
 
     // GETTERS
