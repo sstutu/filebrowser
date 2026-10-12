@@ -62,6 +62,9 @@ func tusPostHandler(cache UploadCache) handleFunc {
 			return http.StatusForbidden, nil
 		}
 
+		if d.settings.UploadImagesOnly && !imageUploadExtension(r.URL.Path) {
+			return http.StatusUnsupportedMediaType, fmt.Errorf("仅允许上传图片")
+		}
 		file, err := files.NewFileInfo(&files.FileOptions{
 			Fs:         d.user.Fs,
 			Path:       r.URL.Path,
@@ -242,6 +245,17 @@ func tusPatchUpload(w http.ResponseWriter, r *http.Request, d *data, cache Uploa
 		)
 	}
 
+	if d.settings.UploadImagesOnly && uploadOffset == 0 {
+		body, validationErr := validateImageUploadBody(r.URL.Path, r.Body)
+		if validationErr != nil {
+			if removeErr := d.user.Fs.Remove(r.URL.Path); removeErr != nil {
+				return http.StatusInternalServerError, removeErr
+			}
+			cache.Complete(file.RealPath())
+			return http.StatusUnsupportedMediaType, validationErr
+		}
+		r.Body = io.NopCloser(body)
+	}
 	openFile, err := d.user.Fs.OpenFile(r.URL.Path, os.O_WRONLY|os.O_APPEND, d.settings.FileMode)
 	if err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("could not open file: %w", err)
@@ -286,6 +300,22 @@ func tusPatchUpload(w http.ResponseWriter, r *http.Request, d *data, cache Uploa
 	w.Header().Set("Upload-Offset", strconv.FormatInt(newOffset, 10))
 
 	if newOffset >= uploadLength {
+		if d.settings.UploadImagesOnly {
+			uploaded, openErr := d.user.Fs.Open(r.URL.Path)
+			if openErr != nil {
+				return http.StatusInternalServerError, openErr
+			}
+			_, validationErr := validateImageUploadBody(r.URL.Path, uploaded)
+			_ = uploaded.Close()
+			if validationErr != nil {
+				_ = openFile.Close()
+				if removeErr := d.user.Fs.Remove(r.URL.Path); removeErr != nil {
+					return http.StatusInternalServerError, removeErr
+				}
+				cache.Complete(file.RealPath())
+				return http.StatusUnsupportedMediaType, validationErr
+			}
+		}
 		cache.Complete(file.RealPath())
 		_ = d.RunHook(func() error { return nil }, "upload", r.URL.Path, "", d.user)
 	}

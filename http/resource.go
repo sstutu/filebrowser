@@ -144,6 +144,14 @@ func resourcePostHandler(fileCache FileCache) handleFunc {
 			return errToStatus(err), err
 		}
 
+		if d.settings.UploadImagesOnly {
+			body, validationErr := validateImageUploadBody(r.URL.Path, r.Body)
+			if validationErr != nil {
+				return http.StatusUnsupportedMediaType, validationErr
+			}
+			r.Body = io.NopCloser(body)
+		}
+
 		file, err := files.NewFileInfo(&files.FileOptions{
 			Fs:         d.user.Fs,
 			Path:       r.URL.Path,
@@ -195,6 +203,14 @@ var resourcePutHandler = withUser(func(w http.ResponseWriter, r *http.Request, d
 	// Only allow PUT for files.
 	if strings.HasSuffix(r.URL.Path, "/") {
 		return http.StatusMethodNotAllowed, nil
+	}
+
+	if d.settings.UploadImagesOnly {
+		body, validationErr := validateImageUploadBody(r.URL.Path, r.Body)
+		if validationErr != nil {
+			return http.StatusUnsupportedMediaType, validationErr
+		}
+		r.Body = io.NopCloser(body)
 	}
 
 	exists, err := afero.Exists(d.user.Fs, r.URL.Path)

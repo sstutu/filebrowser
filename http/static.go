@@ -30,6 +30,7 @@ func handleWithStaticData(w http.ResponseWriter, _ *http.Request, d *data, fSys 
 	}
 
 	data := map[string]interface{}{
+		"UploadImagesOnly":      d.settings.UploadImagesOnly,
 		"Name":                  d.settings.Branding.Name,
 		"DisableExternal":       d.settings.Branding.DisableExternal,
 		"DisableUsedPercentage": d.settings.Branding.DisableUsedPercentage,

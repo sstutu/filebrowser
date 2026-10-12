@@ -18,6 +18,7 @@ const beforeUnload = (event: Event) => {
 
 export const useUploadStore = defineStore("upload", () => {
   const $showError = inject<IToastError>("$showError")!;
+  const notifyRejected = (error: Error) => $showError(error);
   const $showSuccess = inject<IToastSuccess>("$showSuccess");
   const notifySkipped = (count: number) =>
     $showSuccess?.(
@@ -210,6 +211,7 @@ export const useUploadStore = defineStore("upload", () => {
     // ACTIONS
     upload,
     notifySkipped,
+    notifyRejected,
     abort,
 
     // GETTERS

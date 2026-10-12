@@ -55,6 +55,8 @@ docker compose -f compose.yaml ps
 
 浏览器 Ctrl+Shift+R 刷新。源码删除的文件需同步清理服务器对应文件。
 
+仅图片上传：管理员在「设置 → 全局设置」勾选「仅允许上传图片」并保存，刷新上传页面。新数据库默认开启，已有数据库需要手动开启。允许 JPG/JPEG、PNG、GIF、WEBP、BMP、AVIF，后端校验扩展名与文件头；文件夹不受限制。
+
 Documentation on how to install, configure, and build this project lives in [`docs`](docs) in this repository.
 
 [CONTRIBUTING.md](CONTRIBUTING.md) documents how to build and develop the project, which remains useful to anyone forking it.

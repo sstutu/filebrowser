@@ -53,6 +53,40 @@ function moveItem(name: string, dest: string, size = 12) {
 }
 
 describe("checkConflict", () => {
+  it("enforces the image-only switch while preserving folders", () => {
+    vi.stubGlobal("window", { FileBrowser: { UploadImagesOnly: true } });
+    try {
+      const mixed = prepareUploadFiles([
+        { name: "fake.txt", isDir: false, size: 1 },
+        { name: "photo.JPG", isDir: false, size: 1 },
+      ]);
+      expect(mixed.rejected).toEqual(["fake.txt"]);
+      expect(mixed.files.map((file) => file.name)).toEqual(["photo.JPG"]);
+      expect(
+        prepareUploadFiles([
+          { name: "folder", fullPath: "folder", isDir: true, size: 0 },
+          {
+            name: "fake.txt",
+            fullPath: "folder/fake.txt",
+            isDir: false,
+            size: 1,
+          },
+        ]).files
+      ).toHaveLength(0);
+      expect(
+        prepareUploadFiles([
+          { name: "folder", isDir: true, size: 0 },
+          { name: "photo.JPG", isDir: false, size: 1 },
+        ]).files
+      ).toHaveLength(2);
+      window.FileBrowser.UploadImagesOnly = false;
+      expect(
+        prepareUploadFiles([{ name: "file.txt", isDir: false, size: 1 }]).files
+      ).toHaveLength(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it("skips OS metadata and folders emptied by filtering, preserving legitimate empty folders", () => {
     const entries = [
       { name: "root", fullPath: "root", isDir: true, size: 0 },

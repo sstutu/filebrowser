@@ -447,8 +447,9 @@ func quickSetup(v *viper.Viper, s *storage.Storage) error {
 				Download: true,
 			},
 		},
-		AuthMethod: "",
-		Branding:   settings.Branding{},
+		AuthMethod:       "",
+		Branding:         settings.Branding{},
+		UploadImagesOnly: true,
 		Tus: settings.Tus{
 			ChunkSize:  settings.DefaultTusChunkSize,
 			RetryCount: settings.DefaultTusRetryCount,

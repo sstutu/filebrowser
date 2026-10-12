@@ -4,16 +4,27 @@ import url from "@/utils/url";
 import { files as api } from "@/api";
 import { removePrefix } from "@/api/utils";
 
+const imagesOnly = () =>
+  typeof window !== "undefined" &&
+  (window.FileBrowser as unknown as { UploadImagesOnly?: boolean } | undefined)
+    ?.UploadImagesOnly === true;
 const systemUploadNames = new Set(["desktop.ini", "thumbs.db", ".ds_store"]);
 export function prepareUploadFiles(files: UploadList) {
   const path = (file: UploadEntry) =>
     (file.fullPath || file.name).replace(/\\/g, "/").replace(/\/+$/, "");
+  const invalid = files.filter(
+    (file) =>
+      imagesOnly() &&
+      !file.isDir &&
+      !systemUploadNames.has(path(file).split("/").pop()!.toLowerCase()) &&
+      !/\.(jpe?g|png|gif|webp|bmp|avif)$/i.test(file.name)
+  );
   const ignored = files.filter(
     (file) =>
       !file.isDir &&
       systemUploadNames.has(path(file).split("/").pop()!.toLowerCase())
   );
-  const ignoredSet = new Set(ignored);
+  const ignoredSet = new Set([...ignored, ...invalid]);
   const skippedParents = new Set<string>();
   const allParents = new Set<string>();
   const keptParents = new Set<string>();
@@ -45,6 +56,7 @@ export function prepareUploadFiles(files: UploadList) {
           keptParents.has(path(file)))
     ),
     skipped: ignored.length,
+    rejected: invalid.map((file) => path(file)),
   };
 }
 
@@ -155,6 +167,10 @@ export async function checkConflict(
   includeDirectories = false
 ): Promise<ConflictingResource[]> {
   if (files.length === 0) return [];
+  const eligible = !includeDirectories
+    ? new Set(prepareUploadFiles(files).files)
+    : null;
+  if (eligible?.size === 0) return [];
 
   const recursive = !includeDirectories && hasNestedEntries(files);
 
@@ -174,6 +190,7 @@ export async function checkConflict(
 
   const conflicts: ConflictingResource[] = [];
   files.forEach((file, index) => {
+    if (eligible && !eligible.has(file)) return;
     if (file.isDir && !includeDirectories) return; // see directory note above
     if (!includeDirectories && systemUploadNames.has(file.name.toLowerCase()))
       return;
@@ -299,6 +316,12 @@ export function handleFiles(
   layoutStore.closeHovers();
 
   const prepared = prepareUploadFiles(files);
+  if (prepared.rejected.length)
+    uploadStore.notifyRejected(
+      new Error(
+        `已跳过 ${prepared.rejected.length} 个不支持的文件：${prepared.rejected.slice(0, 3).join("、")}${prepared.rejected.length > 3 ? "等" : ""}。仅允许上传图片，合格图片继续上传。`
+      )
+    );
   if (prepared.skipped) uploadStore.notifySkipped?.(prepared.skipped);
 
   for (const file of prepared.files) {

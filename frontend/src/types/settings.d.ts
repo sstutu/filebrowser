@@ -1,4 +1,5 @@
 interface ISettings {
+  uploadImagesOnly: boolean;
   signup: boolean;
   createUserDir: boolean;
   hideLoginButton: boolean;
