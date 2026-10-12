@@ -19,13 +19,15 @@ export async function create(
   url: string,
   password = "",
   expires = "",
-  unit = "hours"
+  unit = "hours",
+  reuseFolder = false
 ) {
   url = removePrefix(url);
   url = `/api/share${url}`;
   if (expires !== "") {
     url += `?expires=${expires}&unit=${unit}`;
   }
+  if (reuseFolder) url += `${url.includes("?") ? "&" : "?"}reuseFolder=true`;
   let body = "{}";
   if (password != "" || expires !== "" || unit !== "hours") {
     body = JSON.stringify({

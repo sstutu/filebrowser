@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	fberrors "github.com/filebrowser/filebrowser/v2/errors"
@@ -155,6 +156,10 @@ var shareDeleteHandler = withPermShare(func(_ http.ResponseWriter, r *http.Reque
 	return errToStatus(err), err
 })
 
+// Serialize reusable-folder lookup and creation to avoid duplicate records
+// when multiple tabs or clients copy links at the same time.
+var reusableFolderShareMu sync.Mutex
+
 var sharePostHandler = withPermShare(func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
 	// Only allow sharing paths that currently exist. Otherwise a share could be
 	// created for a non-existent path and would silently start exposing
@@ -163,7 +168,8 @@ var sharePostHandler = withPermShare(func(w http.ResponseWriter, r *http.Request
 	// d.user.Fs is scoped, so Stat also refuses to follow a symlink whose target
 	// escapes the user's scope: that returns a permission error here and so
 	// blocks creating a share that points out of scope.
-	if _, err := d.user.Fs.Stat(r.URL.Path); err != nil {
+	info, err := d.user.Fs.Stat(r.URL.Path)
+	if err != nil {
 		return errToStatus(err), err
 	}
 
@@ -175,9 +181,32 @@ var sharePostHandler = withPermShare(func(w http.ResponseWriter, r *http.Request
 		}
 		defer r.Body.Close()
 	}
+	if r.URL.Query().Get("reuseFolder") == "true" {
+		if !info.IsDir() || body.Password != "" || body.Expires != "" {
+			return http.StatusBadRequest, nil
+		}
+		reusableFolderShareMu.Lock()
+		defer reusableFolderShareMu.Unlock()
+		canonical := slashClean(r.URL.Path)
+		paths := []string{canonical}
+		if canonical != "/" {
+			paths = append(paths, canonical+"/")
+		}
+		for _, path := range paths {
+			links, lookupErr := d.store.Share.Gets(path, d.user.ID)
+			if lookupErr != nil && !errors.Is(lookupErr, fberrors.ErrNotExist) {
+				return http.StatusInternalServerError, lookupErr
+			}
+			for _, link := range links {
+				if link.Expire == 0 && link.PasswordHash == "" {
+					return renderJSON(w, r, toShareResponse(link))
+				}
+			}
+		}
+	}
 
 	bytes := make([]byte, 6)
-	_, err := rand.Read(bytes)
+	_, err = rand.Read(bytes)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}

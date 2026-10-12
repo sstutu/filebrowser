@@ -27,6 +27,34 @@ If you keep running File Browser, treat it as unmaintained software:
 
 ## Documentation
 
+### 二开版本部署（Git Bash）
+
+1. 本地同步源码：
+
+```bash
+cd /d/env/code/xy-deploy/filebrowser
+set -o pipefail
+tar --exclude=.git --exclude=.idea --exclude=.claude --exclude=frontend/node_modules --exclude=frontend/dist --exclude=srv --exclude=config --exclude=database --exclude='.env*' --exclude='*.tar.gz' -czf - . | ssh xy 'mkdir -p /home/db_data/ubuntu/data/docker_data/filebrowser && tar -xzf - -C /home/db_data/ubuntu/data/docker_data/filebrowser'
+```
+
+2. 登录服务器，在源码目录构建：
+
+```bash
+ssh xy
+cd /home/db_data/ubuntu/data/docker_data/filebrowser
+docker build -f Dockerfile.custom -t filebrowser-custom:latest .
+```
+
+3. 在部署目录更新容器，保留数据：
+
+```bash
+cd /home/db_data/ubuntu/data/docker_data/filebrowser
+docker compose -f compose.yaml up -d --no-build --pull never --force-recreate filebrowser
+docker compose -f compose.yaml ps
+```
+
+浏览器 Ctrl+Shift+R 刷新。源码删除的文件需同步清理服务器对应文件。
+
 Documentation on how to install, configure, and build this project lives in [`docs`](docs) in this repository.
 
 [CONTRIBUTING.md](CONTRIBUTING.md) documents how to build and develop the project, which remains useful to anyone forking it.

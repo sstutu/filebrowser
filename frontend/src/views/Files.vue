@@ -6,9 +6,37 @@
       showLogo
     />
 
-    <breadcrumbs base="/files" />
+    <breadcrumbs base="/files">
+      <div v-if="showCopyActions" class="public-copy-actions">
+        <button
+          type="button"
+          :disabled="copyDisabled"
+          @click="listingView?.copyPublicLinks('links')"
+        >
+          复制公网链接
+        </button>
+        <button
+          type="button"
+          :disabled="copyDisabled"
+          @click="listingView?.copyPublicLinks('table')"
+        >
+          复制文件名＋链接表格
+        </button>
+        <span role="status">
+          {{
+            publicLinks.copying
+              ? "复制中…"
+              : `已选 ${fileStore.selected.length} 项`
+          }}
+        </span>
+      </div>
+    </breadcrumbs>
     <errors v-if="error" :errorCode="error.status" />
-    <component v-else-if="currentView" :is="currentView"></component>
+    <component
+      v-else-if="currentView"
+      :is="currentView"
+      ref="listingView"
+    ></component>
     <div v-else>
       <h2 class="message delayed">
         <div class="spinner">
@@ -36,6 +64,8 @@ import { files as api } from "@/api";
 import { storeToRefs } from "pinia";
 import { useFileStore } from "@/stores/file";
 import { useLayoutStore } from "@/stores/layout";
+import { useAuthStore } from "@/stores/auth";
+import { usePublicLinksStore } from "@/stores/public-links";
 
 import HeaderBar from "@/components/header/HeaderBar.vue";
 import Breadcrumbs from "@/components/Breadcrumbs.vue";
@@ -51,6 +81,22 @@ const Preview = defineAsyncComponent(() => import("@/views/files/Preview.vue"));
 
 const layoutStore = useLayoutStore();
 const fileStore = useFileStore();
+const authStore = useAuthStore();
+const publicLinks = usePublicLinksStore();
+const listingView = ref<{
+  copyPublicLinks: (mode: "links" | "table") => Promise<void>;
+} | null>(null);
+const showCopyActions = computed(
+  () =>
+    !error.value &&
+    !layoutStore.loading &&
+    fileStore.req?.isDir &&
+    authStore.user?.perm.share &&
+    authStore.user.perm.download
+);
+const copyDisabled = computed(
+  () => !fileStore.selected.length || publicLinks.busy || publicLinks.copying
+);
 
 const { reload } = storeToRefs(fileStore);
 
@@ -182,3 +228,52 @@ const keyEvent = (event: KeyboardEvent) => {
   }
 };
 </script>
+
+<style scoped>
+.public-copy-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-inline-start: auto;
+  padding-inline: 0.75rem;
+}
+
+.public-copy-actions button {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--divider);
+  border-radius: 0.25rem;
+  background: var(--surfacePrimary, var(--background));
+  color: var(--textPrimary);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.public-copy-actions button:hover:not(:disabled) {
+  background: var(--divider);
+}
+
+.public-copy-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.public-copy-actions span {
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 736px) {
+  :deep(.breadcrumbs) {
+    height: auto;
+    min-height: 3em;
+    flex-wrap: wrap;
+  }
+
+  .public-copy-actions {
+    flex-wrap: wrap;
+    margin-inline-start: 0;
+    padding-block: 0.35rem;
+  }
+}
+</style>

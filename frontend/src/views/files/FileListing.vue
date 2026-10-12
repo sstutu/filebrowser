@@ -12,12 +12,6 @@
 
       <template #actions>
         <action
-          v-if="canPublicLinks && selectedPublicFiles.length"
-          icon="link"
-          label="复制公网链接和文件名"
-          @action="publicLinks.open(selectedPublicFiles)"
-        />
-        <action
           v-if="canPublicLinks && publicLinks.recent.length"
           icon="table_chart"
           label="本次上传链接表格"
@@ -437,6 +431,7 @@ const copyContextPublicLinks = async (mode: "links" | "table") => {
 const canPublicLinks = computed(
   () => authStore.user?.perm.share && authStore.user.perm.download
 );
+defineExpose({ copyPublicLinks: copyContextPublicLinks });
 const selectedPublicFiles = computed(() =>
   fileStore.selected
     .map((index) => fileStore.req?.items[index])

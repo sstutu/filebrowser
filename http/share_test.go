@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -143,6 +144,70 @@ func TestSharePostHandlerDoesNotLeakSecrets(t *testing.T) {
 	}
 	if stored.PasswordHash == "" || stored.Token == "" {
 		t.Fatalf("server-side secrets not persisted: hash=%q token=%q", stored.PasswordHash, stored.Token)
+	}
+}
+
+func TestReusableFolderShareConcurrentRequests(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, "folder"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	key := []byte("test-signing-key")
+	perm := users.Permissions{Share: true, Download: true}
+	st := scopedUserStorage(t, root, perm, key)
+	for _, link := range []*share.Link{
+		{Hash: "protected", Path: "/folder/", UserID: 1, PasswordHash: "secret"},
+		{Hash: "temporary", Path: "/folder", UserID: 1, Expire: time.Now().Add(time.Hour).Unix()},
+	} {
+		if err := st.Share.Save(link); err != nil {
+			t.Fatal(err)
+		}
+	}
+	handler := handle(sharePostHandler, "", st, &settings.Server{})
+	token := signToken(t, perm, key)
+	responses := make(chan *httptest.ResponseRecorder, 16)
+	var wg sync.WaitGroup
+	for i := 0; i < 16; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			path := "/folder"
+			if i%2 == 0 {
+				path += "/"
+			}
+			req := httptest.NewRequest(http.MethodPost, path+"?reuseFolder=true", strings.NewReader("{}"))
+			req.Header.Set("X-Auth", token)
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+			responses <- rec
+		}(i)
+	}
+	wg.Wait()
+	close(responses)
+	var hash string
+	for rec := range responses {
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+		}
+		var response shareResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+			t.Fatal(err)
+		}
+		if response.HasPassword || response.Expire != 0 {
+			t.Fatal("reused a protected or expiring share")
+		}
+		if hash == "" {
+			hash = response.Hash
+		} else if hash != response.Hash {
+			t.Fatal("concurrent requests created duplicate shares")
+		}
+	}
+	links, err := st.Share.All()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(links) != 3 {
+		t.Fatalf("got %d records, want two existing plus one reusable share", len(links))
 	}
 }
 

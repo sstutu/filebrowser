@@ -37,6 +37,9 @@ vi.mock("@/stores/layout", () => ({
 vi.mock("@/stores/upload", () => ({
   useUploadStore: () => ({ upload: harness.queueUpload }),
 }));
+vi.mock("@/stores/public-links", () => ({
+  usePublicLinksStore: () => ({ recent: [], open: vi.fn() }),
+}));
 vi.mock("@/api", () => ({
   users: {},
   files: {},

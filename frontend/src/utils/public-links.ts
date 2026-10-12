@@ -30,7 +30,7 @@ export function publicLinksTSV(rows: { name: string; link: string }[]) {
     return /[\t\r\n"]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
   };
   return [
-    ["文件名", "公网访问链接"],
+    // ["文件名", "公网访问链接"],
     ...rows.map((row) => [row.name, row.link]),
   ]
     .map((row) => row.map(cell).join("\t"))

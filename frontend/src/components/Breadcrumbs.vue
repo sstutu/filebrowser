@@ -15,6 +15,7 @@
       >
       <component :is="element" :to="link.url">{{ link.name }}</component>
     </span>
+    <slot />
   </div>
 </template>
 
