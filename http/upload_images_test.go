@@ -27,6 +27,15 @@ func TestImageUploadHeaders(t *testing.T) {
 		{"a.jpg", []byte("\x89PNG\r\n\x1a\n"), false},
 		{"a.svg", []byte("<svg/>"), false},
 		{"a.png", nil, false},
+		{"a.MP4", []byte("\x00\x00\x00\x18ftypisom\x00\x00\x00\x00"), true},
+		{"a.mov", []byte("\x00\x00\x00\x18ftypqt  \x00\x00\x00\x00"), true},
+		{"a.m4v", []byte("\x00\x00\x00\x18ftypM4V \x00\x00\x00\x00"), true},
+		{"a.webm", []byte("\x1a\x45\xdf\xa3\x42\x82\x84webm"), true},
+		{"a.mkv", []byte("\x1a\x45\xdf\xa3\x42\x82\x88matroska"), true},
+		{"a.avi", []byte("RIFF1234AVI "), true},
+		{"a.mp4", []byte("not a video"), false},
+		{"a.mp4", []byte("\x00\x00\x00\x18ftypavif\x00\x00\x00\x00"), false},
+		{"a.webm", []byte("\x1a\x45\xdf\xa3matroska"), false},
 	} {
 		t.Run(test.path+string(test.header), func(t *testing.T) {
 			_, err := validateImageUploadBody(test.path, bytes.NewReader(test.header))

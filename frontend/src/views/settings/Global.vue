@@ -47,12 +47,13 @@
           <p>
             <label
               ><input type="checkbox" v-model="settings.uploadImagesOnly" />
-              仅允许上传图片</label
+              仅允许上传图片和视频</label
             >
           </p>
           <p class="small">
-            允许
-            JPG、PNG、GIF、WEBP、BMP、AVIF；校验扩展名及图片文件头，文件夹不受限制。修改后刷新上传页面。
+            允许 JPG、PNG、GIF、WEBP、BMP、AVIF，以及
+            MP4、M4V、MOV、WEBM、MKV、AVI
+            视频；校验扩展名及文件头，文件夹不受限制。修改后刷新上传页面。
           </p>
 
           <h3>{{ t("settings.rules") }}</h3>

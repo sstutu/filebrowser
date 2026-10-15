@@ -12,7 +12,7 @@ import (
 
 func imageUploadExtension(path string) bool {
 	switch strings.ToLower(filepath.Ext(path)) {
-	case ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".avif":
+	case ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".avif", ".mp4", ".m4v", ".mov", ".webm", ".mkv", ".avi":
 		return true
 	}
 	return false
@@ -34,6 +34,19 @@ func imageUploadHeader(path string, header []byte) bool {
 		return len(header) >= 12 && string(header[:4]) == "RIFF" && string(header[8:12]) == "WEBP"
 	case ".avif":
 		return len(header) >= 16 && string(header[4:8]) == "ftyp" && (string(header[8:12]) == "avif" || string(header[8:12]) == "avis" || bytes.Contains(header[16:], []byte("avif")))
+	case ".mp4", ".m4v", ".mov":
+		if len(header) < 16 || string(header[4:8]) != "ftyp" {
+			return false
+		}
+		switch string(header[8:12]) {
+		case "isom", "iso2", "iso3", "iso4", "iso5", "iso6", "mp41", "mp42", "avc1", "dash", "M4V ", "M4VH", "M4VP", "qt  ":
+			return true
+		}
+	case ".webm", ".mkv":
+		return bytes.HasPrefix(header, []byte{0x1a, 0x45, 0xdf, 0xa3}) &&
+			bytes.Contains(header, []byte(map[string]string{".webm": "webm", ".mkv": "matroska"}[ext]))
+	case ".avi":
+		return len(header) >= 12 && string(header[:4]) == "RIFF" && string(header[8:12]) == "AVI "
 	}
 	return false
 }
@@ -45,7 +58,7 @@ func validateImageUploadBody(path string, body io.Reader) (io.Reader, error) {
 		return nil, err
 	}
 	if !imageUploadHeader(path, header) {
-		return nil, fmt.Errorf("仅允许上传 JPG、PNG、GIF、WEBP、BMP、AVIF 图片，文件内容必须与扩展名一致")
+		return nil, fmt.Errorf("仅允许上传图片或视频，支持 JPG、PNG、GIF、WEBP、BMP、AVIF、MP4、M4V、MOV、WEBM、MKV、AVI；文件头必须符合对应格式")
 	}
 	return reader, nil
 }

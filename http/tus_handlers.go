@@ -63,7 +63,7 @@ func tusPostHandler(cache UploadCache) handleFunc {
 		}
 
 		if d.settings.UploadImagesOnly && !imageUploadExtension(r.URL.Path) {
-			return http.StatusUnsupportedMediaType, fmt.Errorf("仅允许上传图片")
+			return http.StatusUnsupportedMediaType, fmt.Errorf("仅允许上传图片和视频")
 		}
 		file, err := files.NewFileInfo(&files.FileOptions{
 			Fs:         d.user.Fs,

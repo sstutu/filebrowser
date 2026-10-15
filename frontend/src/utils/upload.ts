@@ -17,7 +17,9 @@ export function prepareUploadFiles(files: UploadList) {
       imagesOnly() &&
       !file.isDir &&
       !systemUploadNames.has(path(file).split("/").pop()!.toLowerCase()) &&
-      !/\.(jpe?g|png|gif|webp|bmp|avif)$/i.test(file.name)
+      !/\.(jpe?g|png|gif|webp|bmp|avif|mp4|m4v|mov|webm|mkv|avi)$/i.test(
+        file.name
+      )
   );
   const ignored = files.filter(
     (file) =>
@@ -319,7 +321,7 @@ export function handleFiles(
   if (prepared.rejected.length)
     uploadStore.notifyRejected(
       new Error(
-        `已跳过 ${prepared.rejected.length} 个不支持的文件：${prepared.rejected.slice(0, 3).join("、")}${prepared.rejected.length > 3 ? "等" : ""}。仅允许上传图片，合格图片继续上传。`
+        `已跳过 ${prepared.rejected.length} 个不支持的文件：${prepared.rejected.slice(0, 3).join("、")}${prepared.rejected.length > 3 ? "等" : ""}。仅允许上传图片和视频，合格文件继续上传。`
       )
     );
   if (prepared.skipped) uploadStore.notifySkipped?.(prepared.skipped);

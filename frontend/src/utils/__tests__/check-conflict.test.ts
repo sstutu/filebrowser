@@ -59,9 +59,23 @@ describe("checkConflict", () => {
       const mixed = prepareUploadFiles([
         { name: "fake.txt", isDir: false, size: 1 },
         { name: "photo.JPG", isDir: false, size: 1 },
+        { name: "clip.MP4", isDir: false, size: 1 },
+        { name: "clip.mov", isDir: false, size: 1 },
+        { name: "clip.m4v", isDir: false, size: 1 },
+        { name: "clip.webm", isDir: false, size: 1 },
+        { name: "clip.mkv", isDir: false, size: 1 },
+        { name: "clip.avi", isDir: false, size: 1 },
       ]);
       expect(mixed.rejected).toEqual(["fake.txt"]);
-      expect(mixed.files.map((file) => file.name)).toEqual(["photo.JPG"]);
+      expect(mixed.files.map((file) => file.name)).toEqual([
+        "photo.JPG",
+        "clip.MP4",
+        "clip.mov",
+        "clip.m4v",
+        "clip.webm",
+        "clip.mkv",
+        "clip.avi",
+      ]);
       expect(
         prepareUploadFiles([
           { name: "folder", fullPath: "folder", isDir: true, size: 0 },

@@ -51,7 +51,7 @@ func addConfigFlags(flags *pflag.FlagSet) {
 	flags.String("recaptcha.key", "", "ReCaptcha site key")
 	flags.String("recaptcha.secret", "", "ReCaptcha secret")
 
-	flags.Bool("uploadImagesOnly", false, "only allow image uploads")
+	flags.Bool("uploadImagesOnly", false, "only allow image and video uploads")
 	flags.String("branding.name", "", "replace 'File Browser' by this name")
 	flags.String("branding.theme", "", "set the theme")
 	flags.String("branding.color", "", "set the theme color")
