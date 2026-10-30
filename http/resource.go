@@ -144,6 +144,10 @@ func resourcePostHandler(fileCache FileCache) handleFunc {
 			return errToStatus(err), err
 		}
 
+		if r.ContentLength > d.settings.UploadLimitBytes() {
+			return http.StatusRequestEntityTooLarge, fmt.Errorf("文件超过上传大小限制")
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, d.settings.UploadLimitBytes())
 		if d.settings.UploadImagesOnly {
 			body, validationErr := validateImageUploadBody(r.URL.Path, r.Body)
 			if validationErr != nil {
@@ -187,10 +191,6 @@ func resourcePostHandler(fileCache FileCache) handleFunc {
 			return nil
 		}, "upload", r.URL.Path, "", d.user)
 
-		if err != nil {
-			_ = d.user.Fs.RemoveAll(r.URL.Path)
-		}
-
 		return errToStatus(err), err
 	})
 }
@@ -205,6 +205,10 @@ var resourcePutHandler = withUser(func(w http.ResponseWriter, r *http.Request, d
 		return http.StatusMethodNotAllowed, nil
 	}
 
+	if r.ContentLength > d.settings.UploadLimitBytes() {
+		return http.StatusRequestEntityTooLarge, fmt.Errorf("文件超过上传大小限制")
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, d.settings.UploadLimitBytes())
 	if d.settings.UploadImagesOnly {
 		body, validationErr := validateImageUploadBody(r.URL.Path, r.Body)
 		if validationErr != nil {
@@ -366,11 +370,16 @@ func writeFile(afs afero.Fs, dst string, in io.Reader, fileMode, dirMode fs.File
 		return nil, err
 	}
 
-	file, err := afs.OpenFile(dst, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fileMode)
+	// Failed or oversized uploads must not truncate an existing destination.
+	file, err := afero.TempFile(afs, dir, ".upload-")
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
+	defer afs.Remove(file.Name())
+	if err := afs.Chmod(file.Name(), fileMode); err != nil {
+		return nil, err
+	}
 
 	_, err = io.Copy(file, in)
 	if err != nil {
@@ -382,9 +391,15 @@ func writeFile(afs afero.Fs, dst string, in io.Reader, fileMode, dirMode fs.File
 	if err := file.Sync(); err != nil {
 		return nil, err
 	}
+	if err := file.Close(); err != nil {
+		return nil, err
+	}
+	if err := afs.Rename(file.Name(), dst); err != nil {
+		return nil, err
+	}
 
 	// Gets the info about the file.
-	info, err := file.Stat()
+	info, err := afs.Stat(dst)
 	if err != nil {
 		return nil, err
 	}

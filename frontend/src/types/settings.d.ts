@@ -1,4 +1,5 @@
 interface ISettings {
+  maxUploadSizeMB: number;
   uploadImagesOnly: boolean;
   signup: boolean;
   createUserDir: boolean;

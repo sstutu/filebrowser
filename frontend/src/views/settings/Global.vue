@@ -47,15 +47,28 @@
           <p>
             <label
               ><input type="checkbox" v-model="settings.uploadImagesOnly" />
-              仅允许上传图片和视频</label
+              仅允许上传图片、视频和压缩包</label
             >
           </p>
           <p class="small">
             允许 JPG、PNG、GIF、WEBP、BMP、AVIF，以及
-            MP4、M4V、MOV、WEBM、MKV、AVI
-            视频；校验扩展名及文件头，文件夹不受限制。修改后刷新上传页面。
+            MP4、M4V、MOV、WEBM、MKV、AVI 视频，以及 ZIP、RAR、7Z、TAR、GZ、TGZ
+            压缩包；校验扩展名及文件头，文件夹不受限制。修改后刷新上传页面。
           </p>
 
+          <p>
+            <label for="maxUploadSizeMB">单文件上传上限（MB）</label>
+            <vue-number-input
+              id="maxUploadSizeMB"
+              controls
+              v-model.number="settings.maxUploadSizeMB"
+              :min="1"
+              :max="1048576"
+            />
+          </p>
+          <p class="small">
+            默认 100 MB。超限文件会跳过，其他文件继续上传。修改后刷新上传页面。
+          </p>
           <h3>{{ t("settings.rules") }}</h3>
           <p class="small">{{ t("settings.globalRules") }}</p>
           <rules v-model:rules="settings.rules" />

@@ -8,18 +8,23 @@ const imagesOnly = () =>
   typeof window !== "undefined" &&
   (window.FileBrowser as unknown as { UploadImagesOnly?: boolean } | undefined)
     ?.UploadImagesOnly === true;
+const maxUploadMB = () =>
+  (typeof window !== "undefined" &&
+    Number(window.FileBrowser?.MaxUploadSizeMB)) ||
+  100;
 const systemUploadNames = new Set(["desktop.ini", "thumbs.db", ".ds_store"]);
 export function prepareUploadFiles(files: UploadList) {
   const path = (file: UploadEntry) =>
     (file.fullPath || file.name).replace(/\\/g, "/").replace(/\/+$/, "");
   const invalid = files.filter(
     (file) =>
-      imagesOnly() &&
       !file.isDir &&
       !systemUploadNames.has(path(file).split("/").pop()!.toLowerCase()) &&
-      !/\.(jpe?g|png|gif|webp|bmp|avif|mp4|m4v|mov|webm|mkv|avi)$/i.test(
-        file.name
-      )
+      (file.size > maxUploadMB() * 1024 * 1024 ||
+        (imagesOnly() &&
+          !/\.(jpe?g|png|gif|webp|bmp|avif|mp4|m4v|mov|webm|mkv|avi|zip|rar|7z|tar|gz|tgz)$/i.test(
+            file.name
+          )))
   );
   const ignored = files.filter(
     (file) =>
@@ -321,7 +326,7 @@ export function handleFiles(
   if (prepared.rejected.length)
     uploadStore.notifyRejected(
       new Error(
-        `已跳过 ${prepared.rejected.length} 个不支持的文件：${prepared.rejected.slice(0, 3).join("、")}${prepared.rejected.length > 3 ? "等" : ""}。仅允许上传图片和视频，合格文件继续上传。`
+        `已跳过 ${prepared.rejected.length} 个不支持的文件：${prepared.rejected.slice(0, 3).join("、")}${prepared.rejected.length > 3 ? "等" : ""}。类型不支持或超过 ${maxUploadMB()} MB 上限，合格文件继续上传。`
       )
     );
   if (prepared.skipped) uploadStore.notifySkipped?.(prepared.skipped);

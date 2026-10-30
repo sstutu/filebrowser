@@ -55,7 +55,7 @@ docker compose -f compose.yaml ps
 
 浏览器 Ctrl+Shift+R 刷新。源码删除的文件需同步清理服务器对应文件。
 
-图片和视频上传：管理员在「设置 → 全局设置」勾选「仅允许上传图片和视频」并保存，刷新上传页面。新数据库默认开启，已有数据库需要手动开启。允许 JPG/JPEG、PNG、GIF、WEBP、BMP、AVIF 图片，以及 MP4、M4V、MOV、WEBM、MKV、AVI 视频，后端校验扩展名与文件头；文件夹不受限制。
+上传限制：管理员在「设置 → 全局设置」勾选「仅允许上传图片、视频和压缩包」。允许常用图片、MP4/M4V/MOV/WEBM/MKV/AVI 视频，以及 ZIP/RAR/7Z/TAR/GZ/TGZ 压缩包，后端检查扩展名与文件头，不自动解压。单文件大小默认上限 100 MB（按 1024² 字节计算），可在同页调整；即使关闭类型限制，大小上限仍然有效。超限文件跳过，其他文件继续上传，文件夹不受限制。保存后刷新上传页面。此设置不等于总带宽限速。
 
 Documentation on how to install, configure, and build this project lives in [`docs`](docs) in this repository.
 

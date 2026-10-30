@@ -75,6 +75,10 @@ func renderJSON(w http.ResponseWriter, _ *http.Request, data interface{}) (int, 
 }
 
 func errToStatus(err error) int {
+	var tooLarge *http.MaxBytesError
+	if errors.As(err, &tooLarge) {
+		return http.StatusRequestEntityTooLarge
+	}
 	switch {
 	case err == nil:
 		return http.StatusOK

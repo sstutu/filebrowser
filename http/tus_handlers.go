@@ -62,8 +62,16 @@ func tusPostHandler(cache UploadCache) handleFunc {
 			return http.StatusForbidden, nil
 		}
 
+		uploadLength, err := getUploadLength(r)
+		if err != nil || uploadLength < 0 {
+			return http.StatusBadRequest, fmt.Errorf("invalid upload length")
+		}
+		if uploadLength > d.settings.UploadLimitBytes() {
+			return http.StatusRequestEntityTooLarge, fmt.Errorf("文件超过上传大小限制")
+		}
+
 		if d.settings.UploadImagesOnly && !imageUploadExtension(r.URL.Path) {
-			return http.StatusUnsupportedMediaType, fmt.Errorf("仅允许上传图片和视频")
+			return http.StatusUnsupportedMediaType, fmt.Errorf("仅允许上传图片、视频和压缩包")
 		}
 		file, err := files.NewFileInfo(&files.FileOptions{
 			Fs:         d.user.Fs,
@@ -123,11 +131,6 @@ func tusPostHandler(cache UploadCache) handleFunc {
 		})
 		if err != nil {
 			return errToStatus(err), err
-		}
-
-		uploadLength, err := getUploadLength(r)
-		if err != nil || uploadLength < 0 {
-			return http.StatusBadRequest, fmt.Errorf("invalid upload length: %w", err)
 		}
 
 		// Enables the user to utilize the PATCH endpoint for uploading file data.
@@ -226,6 +229,9 @@ func tusPatchUpload(w http.ResponseWriter, r *http.Request, d *data, cache Uploa
 		return http.StatusNotFound, err
 	}
 
+	if uploadLength > d.settings.UploadLimitBytes() {
+		return http.StatusRequestEntityTooLarge, fmt.Errorf("文件超过上传大小限制")
+	}
 	if uploadOffset > uploadLength {
 		return http.StatusBadRequest, fmt.Errorf("upload offset %d exceeds declared length %d", uploadOffset, uploadLength)
 	}

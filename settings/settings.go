@@ -22,6 +22,7 @@ type AuthMethod string
 // Settings contain the main settings of the application.
 type Settings struct {
 	Key                   []byte              `json:"key"`
+	MaxUploadSizeMB       uint64              `json:"maxUploadSizeMB"`
 	UploadImagesOnly      bool                `json:"uploadImagesOnly"`
 	Signup                bool                `json:"signup"`
 	HideLoginButton       bool                `json:"hideLoginButton"`
@@ -39,6 +40,19 @@ type Settings struct {
 	FileMode              fs.FileMode         `json:"fileMode"`
 	DirMode               fs.FileMode         `json:"dirMode"`
 	HideDotfiles          bool                `json:"hideDotfiles"`
+}
+
+// UploadLimitBytes also applies a safe default to existing databases.
+func (s *Settings) UploadLimitBytes() int64 {
+	mb := s.MaxUploadSizeMB
+	if mb == 0 {
+		mb = 100
+	}
+	// Bound conversion to prevent integer overflow from bypassing the limit.
+	if mb > 1048576 {
+		mb = 1048576
+	}
+	return int64(mb) * 1024 * 1024
 }
 
 // GetRules implements rules.Provider.

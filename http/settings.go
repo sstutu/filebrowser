@@ -9,6 +9,7 @@ import (
 )
 
 type settingsData struct {
+	MaxUploadSizeMB       uint64                `json:"maxUploadSizeMB"`
 	UploadImagesOnly      bool                  `json:"uploadImagesOnly"`
 	Signup                bool                  `json:"signup"`
 	HideLoginButton       bool                  `json:"hideLoginButton"`
@@ -27,6 +28,7 @@ type settingsData struct {
 var settingsGetHandler = withAdmin(func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
 	data := &settingsData{
 		UploadImagesOnly:      d.settings.UploadImagesOnly,
+		MaxUploadSizeMB:       uint64(d.settings.UploadLimitBytes() / (1024 * 1024)),
 		Signup:                d.settings.Signup,
 		HideLoginButton:       d.settings.HideLoginButton,
 		CreateUserDir:         d.settings.CreateUserDir,
@@ -51,6 +53,10 @@ var settingsPutHandler = withAdmin(func(_ http.ResponseWriter, r *http.Request, 
 		return http.StatusBadRequest, err
 	}
 
+	if req.MaxUploadSizeMB > 1048576 {
+		return http.StatusBadRequest, nil
+	}
+	d.settings.MaxUploadSizeMB = req.MaxUploadSizeMB
 	d.settings.UploadImagesOnly = req.UploadImagesOnly
 	d.settings.Signup = req.Signup
 	d.settings.CreateUserDir = req.CreateUserDir

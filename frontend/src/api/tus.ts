@@ -43,7 +43,7 @@ export async function upload(
           : 0;
 
         // Do not retry for file conflict.
-        if (status === 409) {
+        if (status === 409 || status === 413 || status === 415) {
           return false;
         }
 
@@ -65,7 +65,11 @@ export async function upload(
 
         console.error(error);
 
-        reject(new Error(message));
+        reject(
+          new Error(
+            `${decodeURIComponent(filePath.split("/").pop() || filePath)}：${message}`
+          )
+        );
       },
       onProgress: function (bytesUploaded) {
         if (typeof onupload === "function") {

@@ -30,6 +30,7 @@ func handleWithStaticData(w http.ResponseWriter, _ *http.Request, d *data, fSys 
 	}
 
 	data := map[string]interface{}{
+		"MaxUploadSizeMB":       d.settings.UploadLimitBytes() / (1024 * 1024),
 		"UploadImagesOnly":      d.settings.UploadImagesOnly,
 		"Name":                  d.settings.Branding.Name,
 		"DisableExternal":       d.settings.Branding.DisableExternal,

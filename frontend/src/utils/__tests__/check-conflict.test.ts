@@ -53,6 +53,32 @@ function moveItem(name: string, dest: string, size = 12) {
 }
 
 describe("checkConflict", () => {
+  it("allows archives and skips oversized files without stopping valid uploads", () => {
+    vi.stubGlobal("window", {
+      FileBrowser: { UploadImagesOnly: true, MaxUploadSizeMB: 1 },
+    });
+    try {
+      const result = prepareUploadFiles([
+        { name: "ok.zip", isDir: false, size: 1048576 },
+        { name: "too-large.mp4", isDir: false, size: 1048577 },
+        { name: "ok.jpg", isDir: false, size: 10 },
+        { name: "ok.tar.gz", isDir: false, size: 100 },
+      ]);
+      expect(result.files.map((file) => file.name)).toEqual([
+        "ok.zip",
+        "ok.jpg",
+        "ok.tar.gz",
+      ]);
+      expect(result.rejected).toEqual(["too-large.mp4"]);
+      window.FileBrowser.UploadImagesOnly = false;
+      expect(
+        prepareUploadFiles([{ name: "large.txt", isDir: false, size: 1048577 }])
+          .files
+      ).toHaveLength(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it("enforces the image-only switch while preserving folders", () => {
     vi.stubGlobal("window", { FileBrowser: { UploadImagesOnly: true } });
     try {
