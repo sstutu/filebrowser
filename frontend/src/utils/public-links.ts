@@ -25,13 +25,14 @@ export async function copyPreparedPublicLinks(prepare: () => Promise<string>) {
 }
 
 export function publicLinksTSV(rows: { name: string; link: string }[]) {
+  const stripExt = (name: string) => name.replace(/\.[^./\\]+$/, "");
   const cell = (value: string) => {
     const safe = /^[\s]*[=+@-]/.test(value) ? `'${value}` : value;
     return /[\t\r\n"]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
   };
   return [
     // ["文件名", "公网访问链接"],
-    ...rows.map((row) => [row.name, row.link]),
+    ...rows.map((row) => [stripExt(row.name), row.link]),
   ]
     .map((row) => row.map(cell).join("\t"))
     .join("\r\n");
